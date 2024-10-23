@@ -20,3 +20,10 @@ class Payment(models.Model):
     def __str__(self):
         return f"Payment {self.transaction_id} - {self.status}"
 
+
+
+class TransactionLog(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    transaction_id = models.CharField(max_length=100)
+    status = models.CharField(max_length=10)
+    timestamp = models.DateTimeField(auto_now_add=True)
