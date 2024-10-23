@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
 
     'payments',
     'reports',
@@ -72,6 +73,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'payment_service.wsgi.application'
 
+CELERY_BROKER_URL = 'amqp://localhost'
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
