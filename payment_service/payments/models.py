@@ -2,7 +2,6 @@ from django.db import models
 from django.contrib.auth.models import User
 
 
-
 class Payment(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -21,9 +20,22 @@ class Payment(models.Model):
         return f"Payment {self.transaction_id} - {self.status}"
 
 
-
 class TransactionLog(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     transaction_id = models.CharField(max_length=100)
     status = models.CharField(max_length=10)
     timestamp = models.DateTimeField(auto_now_add=True)
+
+
+class RequestLog(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    method = models.CharField(max_length=10)
+    path = models.CharField(max_length=255)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+
+class RequestLogSummary(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    month = models.DateField()
+    request_count = models.PositiveIntegerField()

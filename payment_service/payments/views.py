@@ -4,12 +4,19 @@ from rest_framework.views import APIView
 from .models import Payment, TransactionLog
 from .serializers import PaymentSerializer
 import uuid
+from rest_framework.permissions import IsAdminUser
+
+from .services import make_bank_payment
 from .tasks import check_pending_payment
 from rest_framework.permissions import IsAuthenticated
 from django.utils.dateparse import parse_date
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 class PaymentCreateView(APIView):
+    uthentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         user = request.user
         amount = request.data.get('amount')
@@ -33,7 +40,12 @@ class PaymentCreateView(APIView):
             status=payment.status
         )
 
-        check_pending_payment.apply_async((payment.id,), countdown=10800)
+        initial_result = make_bank_payment()
+        payment.status = initial_result
+        payment.save()
+
+        if initial_result == 'pending':
+            check_pending_payment.apply_async((payment.id,), countdown=10800)
 
         serializer = PaymentSerializer(payment)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -41,6 +53,8 @@ class PaymentCreateView(APIView):
 
 
 class PaymentStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, transaction_id):
         try:
             payment = Payment.objects.get(transaction_id=transaction_id)
@@ -69,6 +83,8 @@ class UserPaymentReportView(APIView):
 
 
 class PaymentReportByDateRangeView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         start_date = request.query_params.get('start_date')
         end_date = request.query_params.get('end_date')
@@ -76,12 +92,14 @@ class PaymentReportByDateRangeView(APIView):
         if not start_date or not end_date:
             return Response({'error': 'Both start_date and end_date are required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        payments = Payment.objects.filter(created_at__range=[parse_date(start_date), parse_date(end_date)])
+        payments = Payment.objects.filter(created_at__gte=start_date, created_at__lte=end_date)
         serializer = PaymentSerializer(payments, many=True)
         return Response(serializer.data)
 
 
 class AllRequestsReportView(APIView):
+    permission_classes = [IsAdminUser]
+
     def get(self, request):
         logs = TransactionLog.objects.all()
         log_data = [{'user': log.user.username, 'transaction_id': log.transaction_id, 'status': log.status, 'timestamp': log.timestamp} for log in logs]
